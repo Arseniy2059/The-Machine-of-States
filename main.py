@@ -1,16 +1,48 @@
-# This is a sample Python script.
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher import FSMContext
+import asyncio
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+api = ''
+
+bot = Bot(token=api)
+dp = Dispatcher(bot, storage=MemoryStorage())
+
+class UserState(StatesGroup):
+    age = State()
+    growth = State()
+    weight = State()
+
+@dp.message_handler(text = 'Calories')
+async def set_age(message):
+    await message.answer('Введите свой возраст:')
+    await UserState.age.set()
+
+@dp.message_handler(state=UserState.age)
+async def set_growth(message, state):
+        await state.update_data(age=message.text)
+        await message.answer(f"Введите свой рост:")
+        await UserState.growth.set()
+
+@dp.message_handler(state=UserState.growth)
+async def set_growth(message, state):
+    await state.update_data(growth=message.text)
+    await message.answer(f"Введите свой вес:")
+    await UserState.weight.set()
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+@dp.message_handler(state=UserState.weight)
+async def send_calories(message, state):
+    await state.update_data(weight=message.text)
+    dta = await state.get_data()
+    m = 10*int(dta['weight'])
+    f = 6.25*int(dta['growth'])
+    r = 5*int(dta['age'])
+    mfr = (m + f - r) + 5
+    await message.answer(f'Ваша норма колорий {mfr}')
+    await state.finish()
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    executor.start_polling(dp, skip_updates=True)
